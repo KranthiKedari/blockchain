@@ -1,1 +1,5 @@
-2018/12/17-03:56:41.359 2e8 Delete type=3 #1
+2018/12/17-23:48:35.141 30cc Recovering log #3
+2018/12/17-23:48:35.141 30cc Level-0 table #5: started
+2018/12/17-23:48:35.143 30cc Level-0 table #5: 1432 bytes OK
+2018/12/17-23:48:35.151 30cc Delete type=0 #3
+2018/12/17-23:48:35.151 30cc Delete type=3 #2

@@ -47,7 +47,7 @@ class Blockchain{
         
       }).then((blockJson) => {
         if(blockJson != undefined && blockJson.length > 0) {
-          console.log("Block data:" + blockJson);
+          console.log("Previous Block data:" + blockJson);
           let previousBlockHash = JSON.parse(blockJson).hash;
           console.log("prevHash:" + previousBlockHash );
 
@@ -63,15 +63,21 @@ class Blockchain{
         }
         // Block hash with SHA256 using newBlock and converting to a string
         newBlock.hash = SHA256(JSON.stringify(newBlock)).toString();
-        //console.log("New block hash:" + newBlock.hash);
+
+        // Uncomment the next three lines to corrupt 4 and 6 blocks for testing
+        // if(newBlock.height == 4 || newBlock.height == 6) {
+        //   newBlock.data = "Corrupting Block :" + newBlock.height;
+        // }
+
         // Adding block object to chain
         self.storeBlockInDb(JSON.stringify(newBlock).toString());
-        resolve("done:"+ JSON.stringify(newBlock));
+        resolve("Added New block :"+ JSON.stringify(newBlock));
         //resolve();
       })
     });
   }
 
+  // Checks if the blockchain is empty and adds a genesis block if it is empty.
   maybeAddGenesisBlock(blockHeight) {
     if( blockHeight == 0) {
       console.log("Adding genesis block");
@@ -91,6 +97,7 @@ class Blockchain{
   }
   
 
+// Stores the block in the levelDB
   storeBlockInDb(newBlock) {
     return levelSandbox.addDataToLevelDB(newBlock);
   }
@@ -103,91 +110,131 @@ class Blockchain{
   // get block
   getBlock(blockHeight){
     // return object as a single string
-    console.log("getting block for height:" + blockHeight);
+    //console.log("getting block for height:" + blockHeight);
     return levelSandbox.getLevelDBData(blockHeight);     
   }
 
   // validate block
   validateBlock(blockHeight){
     let self = this;
-    return new Promise(function(resolve, reject) {
-      self.getBlock(blockHeight).then((blockJson) => {
-          // get block object
-          let block =JSON.parse(blockJson);
-          // get block hash
-          let blockHash = block.hash;
-          // remove block hash to test block integrity
-          block.hash = '';
-          // generate block hash
-          let validBlockHash = SHA256(JSON.stringify(block)).toString();
-          // Compare
-          if (blockHash===validBlockHash) {
-            resolve(true);
-          } else {
-            console.log('Block #'+blockHeight+' invalid hash:\n'+blockHash+'<>'+validBlockHash);
-            resolve(false);
-          }
-        });
-     });
+    
+    return self.getBlock(blockHeight).then((blockJson) => {
+        // get block object
+        let block =JSON.parse(blockJson);
+        // get block hash
+        let blockHash = block.hash;
+        // remove block hash to test block integrity
+        block.hash = '';
+        // generate block hash
+        let validBlockHash = SHA256(JSON.stringify(block)).toString();
+        // Compare
+        if (blockHash===validBlockHash) {
+          console.log("Block valid for height:" + blockHeight);
+          return Promise.resolve(true);
+        } else {
+          console.log('Block #'+blockHeight+' invalid hash:\n'+blockHash+'<>'+validBlockHash);
+          return Promise.resolve(false);
+        }
+      });
+     
   }
 
- // Validate blockchain
+  // Validates a block link by checking the hash of a block to the prevHash of the next block.
+  validateBlockLink(blockHeight) {
+    let nextBlockHeight = blockHeight + 1; 
+    return this.getBlock(blockHeight).then((blockJson) => {
+      let currentBlockHash = JSON.parse(blockJson).hash;
+
+      return this.getBlock(nextBlockHeight).then((nextBlockJson) => {
+        let nextBlockHash = JSON.parse(nextBlockJson).previousBlockHash;
+        if(currentBlockHash !== nextBlockHash) {
+
+          return Promise.resolve(false);
+        } else {
+          return Promise.resolve(true);
+        }
+      })
+    })
+
+
+  }
+
+  // Validate a block and checks the block link at a particular height.
+  validateBlockAndBlockLink(height, totalCount) {
+    let blockHeight = height;
+     return this.validateBlock(blockHeight).then((isValid) => {
+            if(isValid == true) {
+              if(blockHeight < (totalCount-1) ) {
+                  console.log("validating block link for blocks :"  + blockHeight +" and " + (blockHeight+1)); 
+
+                // we validate all blocks but we cant do link validation for the last block.
+                // if there are 3 blocks, we validate links 0-1, 1-2 and 2-3 only
+               return this.validateBlockLink(blockHeight).then((linkValid) => {
+                    if(linkValid === false) {
+                      return Promise.resolve(false);
+                    } else {
+                      //console.log("Block link valid for height:" + blockHeight);
+                      return Promise.resolve(true);
+                    }
+                  });
+              } else {
+                return Promise.resolve(true);
+              }
+            } else {
+              return Promise.resolve(false);
+            }
+          });
+  }
+
+
+ // Validates the entire block chain.
   validateChain(){
-    // let errorLog = [];
-
-    // for (var i = 0; i < getBlockHeight() - 1; i++) {
-    //   // validate block
-    //   if (!this.validateBlock(i))errorLog.push(i);
-    //   // compare blocks hash link
-    //   let blockHash = this.chain[i].hash;
-    //   let previousHash = this.chain[i+1].previousBlockHash;
-    //   if (blockHash!==previousHash) {
-    //     errorLog.push(i);
-    //   }
-    // }
-    // if (errorLog.length>0) {
-    //   console.log('Block errors = ' + errorLog.length);
-    //   console.log('Blocks: '+errorLog);
-    // } else {
-    //   console.log('No errors detected');
-    // }
-
-    let promises = [];
     this.getBlockHeight().then((height) => {
-      for (var i = 0; i <height-1; i++) {
-        promises.push(this.validateBlock(i));
+      //console.log("Total blocks(including genesis):" + height);
+      //validate all the blocks and then validate all the block links
+      let promises = []
+
+      for (var i = 0; i <height; i++) {
+       let blockHeight = i; 
+       let totalCount = height;
+       promises.push(this.validateBlockAndBlockLink(blockHeight, totalCount));
+
       }
 
-      Promise.all(promises).then(function(values) {
-        let isBlockchainValid = true;
-        for(var i=0;i<values.length; i++) {
-          if(values[i] == false) {
-            isBlockchainValid = false;
-            break;
-          }
-        }
+      return Promise.resolve(promises);
 
-        if(isBlockchainValid) {
-          console.log("Block chain is valid.");
-        } else {
-          console.log("Block chain validation failed.");
+    }).then((promises) => {
+      Promise.all(promises).then((values) => {
+        for(var i =0;i< values.length; i++) {
+          if( values[i] === false) {
+            console.log("Block => " + i + " is invalid");
+          } else {
+            console.log("Block => " + i + " is valid");
+          }
         }
       })
     });
-  }
+
+   }
 }
 
-myBlockChain = new Blockchain();
-// (function theLoop (i) {
-//     setTimeout(function () {
-//         let blockTest = new Block("Test Block - " + (i + 1));
-//         myBlockChain.addBlock(blockTest).then((result) => {
-//             console.log(result);
-//             i++;
-//             if (i < 10) theLoop(i);
-//         });
-//     }, 4000);
-//   })(0);
 
-myBlockChain.validateChain();
+
+ //myBlockChain = new Blockchain();
+
+ //Step 1: Create 10 blocks.
+ // NOTE : If you want to corrupt a few blocks(4, 6) uncomment lines 68 -70
+  // (function theLoop (i) {
+  //     setTimeout(function () {
+  //         let blockTest = new Block("Test Block - " + (i + 1));
+  //         myBlockChain.addBlock(blockTest).then((result) => {
+  //             console.log(result);
+  //             i++;
+  //             if (i < 10) theLoop(i);
+  //         });
+  //     }, 4000);
+  //   })(0);
+
+// Step 2: Validate blockchain
+//myBlockChain.validateChain();
   
