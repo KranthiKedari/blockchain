@@ -1,8 +1,0 @@
-// Block date model
-{
-   "hash": "",
-   "height": 1325438,
-   "body" :[],
-   "time": 1529001822,
-   "previousblockhash": ""
- }
