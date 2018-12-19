@@ -1,3 +1,11 @@
+ 
+This project is to create a private blockchain that can be persisted in levelDB.
+
+This includes functionality that would add blocks to the chain and validation function that validates a block individually using its hash as well as the chain link
+
+
+
+USAGE DETAILS:
  //myBlockChain = new Blockchain();
 
  //Step 1: Create 10 blocks.

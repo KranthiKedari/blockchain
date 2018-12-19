@@ -92,7 +92,7 @@ class Blockchain{
 
       return promise;
     } else {
-      return Promise.resolve(blockHeight);
+      return Promise.resolve(blockHeight + 1);
     }  
   }
   
@@ -104,7 +104,13 @@ class Blockchain{
   // Get block height
   getBlockHeight(){
     // Load the current block count from the level DB.
-    return levelSandbox.getBlockCount();
+    return levelSandbox.getBlockCount().then((count) => {
+      if (count == 0) {
+        return Promise.resolve(count);
+      } else {
+        return Promise.resolve(count - 1);
+      }
+    });
   }
 
   // get block
@@ -164,7 +170,7 @@ class Blockchain{
     let blockHeight = height;
      return this.validateBlock(blockHeight).then((isValid) => {
             if(isValid == true) {
-              if(blockHeight < (totalCount-1) ) {
+              if(blockHeight < (totalCount) ) {
                   console.log("validating block link for blocks :"  + blockHeight +" and " + (blockHeight+1)); 
 
                 // we validate all blocks but we cant do link validation for the last block.
@@ -193,10 +199,9 @@ class Blockchain{
       //console.log("Total blocks(including genesis):" + height);
       //validate all the blocks and then validate all the block links
       let promises = []
-
-      for (var i = 0; i <height; i++) {
+      let totalCount = height;
+      for (var i = 0; i <=height; i++) {
        let blockHeight = i; 
-       let totalCount = height;
        promises.push(this.validateBlockAndBlockLink(blockHeight, totalCount));
 
       }
@@ -220,7 +225,7 @@ class Blockchain{
 
 
 
- //myBlockChain = new Blockchain();
+ myBlockChain = new Blockchain();
 
  //Step 1: Create 10 blocks.
  // NOTE : If you want to corrupt a few blocks(4, 6) uncomment lines 68 -70
@@ -236,5 +241,5 @@ class Blockchain{
   //   })(0);
 
 // Step 2: Validate blockchain
-//myBlockChain.validateChain();
+myBlockChain.validateChain();
   
