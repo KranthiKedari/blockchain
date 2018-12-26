@@ -77,7 +77,7 @@ class BlockController {
             
             console.log("adding new block with text:" + blockData);
             this.blockchain.addBlock(new privateChain.Block(blockData)).then((result) => {
-                response.status(200).send("Successfully added the block.")
+                response.status(200).send(result)
             })
             .catch((err) => {
                 response.status(500).send('ERROR: Error while adding a new block');

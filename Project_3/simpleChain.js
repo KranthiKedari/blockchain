@@ -71,7 +71,7 @@ class Blockchain{
 
         // Adding block object to chain
         self.storeBlockInDb(JSON.stringify(newBlock).toString());
-        resolve("Added New block :"+ JSON.stringify(newBlock));
+        resolve(JSON.stringify(newBlock));
         //resolve();
       })
     });
