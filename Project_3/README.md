@@ -26,7 +26,7 @@ node app.js
 End points
 -----------
 
-1) GET localhost:8000/api/block/blockNumber[?json=1]
+1) GET localhost:8000/block/blockNumber[?json=1]
 -----------------------------------------------------
 Retrives the block from the private block chain. Error if bloack not found or invalid height (status: 500)
 e:g 
@@ -38,7 +38,7 @@ The above example retrieves block 1 and makes the json response pretty
 
 
 
-2) POST localhost:8000/api/block
+2) POST localhost:8000/block
 --------------------------------
 Creates a new block with given data.
 
