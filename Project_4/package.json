@@ -1,0 +1,21 @@
+{
+  "name": "project_3",
+  "version": "1.0.0",
+  "description": "Web services for the private blockchain",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Kranthi Kedari",
+  "license": "ISC",
+  "dependencies": {
+   "bitcoinjs-lib": "^4.0.2",
+   "bitcoinjs-message": "^2.0.0",
+   "body-parser": "^1.18.3",
+   "crypto-js": "^3.1.9-1",
+   "express": "^4.16.4",
+   "express-prettify": "^0.1.1",
+   "hex2ascii": "0.0.3",
+   "level": "^4.0.0",
+ }
+}
