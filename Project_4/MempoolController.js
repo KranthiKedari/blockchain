@@ -44,19 +44,21 @@ class MempoolController {
 		let isValid = bitcoinMessage.verify(record.message, record.walletAddress, signature);
 
         if (isValid === true) {
+          response['registerStar'] = true;
           record['messageSignature'] = true;
           console.log("Signature is valid")
         } else {
-          record['messageSignature'] = false;
+          response['registerStar'] = false;
         }
 
-        return this.constructValidationRecord(walletAddress);
+        response['status'] = this.constructValidationRecord(walletAddress);
+        return response;
 	}
 
 	hasValidation(walletAddress) {
-		console.log(this.mempool[walletAddress]);
 		return this.mempool[walletAddress] != undefined && this.mempool[walletAddress].messageSignature === true;
 	}
+
 
     constructValidationRecord(walletAddress) {
     	let timestamp = new Date().getTime().toString().slice(0,-3);
