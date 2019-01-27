@@ -2,6 +2,8 @@ const SHA256 = require('crypto-js/sha256');
 const privateChain  = require('./simpleChain.js');
 
 const Blockchain = new privateChain.Blockchain();
+const util = require('./util.js')
+const star = require('./star.js')
 /**
  * Controller Definition to encapsulate routes to work with blocks
  */
@@ -13,8 +15,9 @@ class BlockController {
      */
     constructor(app) {
         this.app = app;
+        this.mempoolController =util.getMempool()
+
         this.initializeBlockChain();
-        this.initializeMockData();
         this.getBlockByIndex();
         this.postNewBlock();
     }
@@ -43,7 +46,17 @@ class BlockController {
                             return response.status(500).json(this.constructError('ERROR:Error loading block data from the block chain.'));
                         }
 
-                        response.status(200).json(JSON.parse(blockJson));
+                        let blockData = JSON.parse(blockJson)
+                        let blockBody = blockData.body
+
+                        if(blockBody.star != undefined) {
+                            let starData = new star.star(blockBody.star)
+                            starData.addDecodedStory();
+                            blockBody.star = starData;
+                            blockData.body = blockBody;
+                        }
+
+                        response.status(200).json(blockData)
                     })
                     .catch((err) => {
                         response.status(500).json(this.constructError('ERROR: Error retrieving the block at height:' + blockHeight));
@@ -63,18 +76,43 @@ class BlockController {
                 response.status(403).json(this.constructError("Denied: Invalid contentType. use application/json."))
             }
            
-            let blockJson = request.body;
-            console.log("Request body:" + JSON.stringify(blockJson));
-            if(JSON.stringify(blockJson) === JSON.stringify({})) {
+            let blockData = request.body;
+            console.log("Request body:" + JSON.stringify(blockData));
+            if(JSON.stringify(blockData) === JSON.stringify({})) {
                 return response.status(500).json(this.constructError("ERROR:Invalid/Empty request body."));
             }
 
-            let blockData = blockJson.body;
-
-            if(blockData == undefined) {
-                return response.status(500).json(this.constructError('ERROR: Block body is empty. use {"body" : "Block data"} as request body.' ));
+            // Check if wallet address is present
+            if(blockData.address == undefined) {
+                return response.status(500).json(this.constructError('ERROR: Invalid/Empty Wallet address.' ));
             }
-            
+
+            // check if star data is given in the request.
+            if(blockData.star == undefined) {
+                return response.status(500).json(this.constructError('ERROR: Invalid/Empty Star data.' ));
+            }
+
+            let walletAddress = blockData.address;
+            let starData = blockData.star;
+
+            console.log(walletAddress + ":Star:"+ starData)
+
+            // Now check if the validation is present for the wallet address.
+            if(!this.mempoolController.hasValidation(walletAddress)) {
+                return response.status(500).json(this.constructError('ERROR: Validation doesnt exist in mempool.' ));
+            }
+
+            // Here we can assume the data is present in the request and the validation exists in mempool.
+            // Time to add the star data.
+            if(starData.ra == undefined || starData.dec == undefined || starData.story == undefined) {
+                return response.status(500).json(this.constructError('ERROR: Invalid/Incomplete star data.' ));
+            } 
+
+            let star_obj = new star.star(starData);
+            star_obj.encodeStory()
+            blockData.star = star_obj
+
+            this.mempoolController.removeValidationRequest(walletAddress);
             console.log("adding new block with text:" + blockData);
             this.blockchain.addBlock(new privateChain.Block(blockData)).then((result) => {
                 response.status(200).json(JSON.parse(result));
@@ -82,25 +120,6 @@ class BlockController {
             .catch((err) => {
                 response.status(500).json(this.constructError('ERROR: Error while adding a new block'));
             })  
-        });
-    }
-
-    /**
-     * Help method to inizialized Mock dataset, adds 10 test blocks to the blocks array
-     */
-    initializeMockData() {
-        this.app.post("/test/populate", (req, res) => {
-            let self = this;
-          (function theLoop (i) {
-            setTimeout(function () {
-                let blockTest = new privateChain.Block("Test Block - " + (i + 1));
-                self.blockchain.addBlock(blockTest).then((result) => {
-                  console.log(result);
-                  i++;
-                  if (i < 10) theLoop(i);
-                });
-            }, 2000);
-            })(0);
         });
     }
 
