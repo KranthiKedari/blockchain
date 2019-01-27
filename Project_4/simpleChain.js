@@ -113,6 +113,18 @@ class Blockchain{
     });
   }
 
+    // Get block height
+  async getCurrentBlockHeight(){
+    // Load the current block count from the level DB.
+    const count = await levelSandbox.getBlockCount();
+
+      if (count == 0) {
+        return count;
+      } else {
+        return count - 1;
+      }
+  }
+
   // get block
   getBlock(blockHeight){
     // return object as a single string

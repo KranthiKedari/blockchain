@@ -15,7 +15,7 @@ class StarController {
 
 
     getStarByHash() {
-    	this.app.get("/stars/hash::hash", (request, response) => {
+    	this.app.get("/stars/hash::hash", async (request, response) => {
          	// Safe to assume the validation is successful
         	let requestHash = request.params.hash
             console.log("Retriving block for blockHash: " + requestHash)
@@ -23,26 +23,24 @@ class StarController {
         		return response.status(500).json(util.constructError('ERROR: Invalid/Empty block hash.'));
         	}
 
-        	this.blockchain.getBlockHeight().then((height) => {
-        		if(height === 0) {
-        			return response.status(500).json(util.constructError('ERROR: Blockchain is empty.'));
+			const height = await this.blockchain.getCurrentBlockHeight();
+			if(height === 0) {
+        		return response.status(500).json(util.constructError('ERROR: Blockchain is empty.'));
+        	}
+
+        	let currentHeight = height;
+        	let matchedBlock = {}
+        	while(currentHeight > 0) {
+        		const blockAtHeight = await this.checkBlockHashAtHeight(currentHeight, requestHash);
+
+        		if(blockAtHeight !== false) {
+        			matchedBlock = blockAtHeight;
+        			break;
         		}
+   				currentHeight--;
+        	}
 
-        		let currentHeight = height;
-        		while(currentHeight > 0) {
-
-        				let blockAtHeight = this.checkBlockHashAtHeight(currentHeight, requestHash);
-        				blockAtHeight.then((block) => {
-        					if(block !== false) {
-        						return response.status(200).json(block);
-        					} 
-        				});
-   						currentHeight--;
-        		}
-
-
-        		return response.status(200).json({});	
-        	});
+        	return response.status(200).json(matchedBlock);
         
         });
     }
